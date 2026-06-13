@@ -1,0 +1,337 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Arif KHan — Weather</title>
+
+  <!-- Bootstrap + Google font + FontAwesome -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
+
+  <style>
+    :root{
+      --card-radius: 14px;
+      --accent: #ffb703;
+      --glass: rgba(255,255,255,0.08);
+    }
+    *{box-sizing:border-box}
+
+    body {
+      min-height: 100vh;
+      margin: 0;
+      background: linear-gradient(180deg, #ffc107 0%, #ffc107 100%);
+      font-family: Inter, system-ui, -apple-system, 'Segoe UI', Roboto, Arial;
+      color: #082032;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* page container */
+    .app {
+      width: 100%;
+      max-width: 980px;
+      margin: 0 auto;
+      padding: 16px;
+    }
+
+    header.app-head{
+      display:flex;
+      align-items:center;
+      gap:16px;
+      margin-bottom:12px;
+      justify-content:space-between;
+    }
+    .branding { font-weight:700; font-size:1.25rem; color:#1f2937; }
+
+    /* main layout */
+    .grid {
+      display:grid;
+      grid-template-columns: 1fr 420px;
+      gap:18px;
+      align-items:start;
+    }
+
+    /* left - controls and details */
+    .panel {
+      background:#fff;
+      border-radius:14px;
+      padding:16px;
+      box-shadow:0 8px 36px rgba(15,23,42,0.08);
+    }
+
+    /* right - animated card */
+    .visual {
+      position:relative;
+      min-height: 420px;
+      border-radius:14px;
+      overflow:hidden;
+      background: linear-gradient(180deg, rgba(255,255,255,0.9), rgba(255,255,255,0.88));
+      box-shadow:0 8px 36px rgba(15,23,42,0.08);
+      padding:18px;
+    }
+
+    /* weather hero inside visual */
+    .hero {
+      position:relative;
+      z-index:3;
+      display:flex;
+      gap:12px;
+      align-items:center;
+    }
+    .hero .info { flex:1 }
+    .hero .place { font-weight:700; font-size:1.05rem; color:#0b1220; }
+    .hero .time { color:#475569; font-size:.9rem }
+    .hero .icon {
+      width:110px;
+      height:110px;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+    }
+    .hero .icon img { max-width:100%; filter: drop-shadow(0 8px 20px rgba(2,6,23,0.12)); }
+
+    .temp {
+      font-size:46px;
+      font-weight:700;
+      display:flex;
+      gap:8px;
+      align-items:baseline;
+      color:#071430;
+    }
+    .condition { color:#475569; font-size:1rem }
+
+    /* metrics */
+    .metrics {
+      display:flex;
+      gap:8px;
+      flex-wrap:wrap;
+      margin-top:12px;
+    }
+    .metric {
+      background:rgba(2,6,23,0.03);
+      padding:8px 10px;
+      border-radius:10px;
+      display:flex;
+      gap:8px;
+      align-items:center;
+      min-width:100px;
+      color:#0b1220;
+      font-size:.9rem;
+    }
+    .metric .k { font-weight:600; color:#0b1220 }
+
+    /* AQI card */
+    .aqi {
+      margin-top:12px;
+      padding:10px;
+      border-radius:10px;
+      background: linear-gradient(90deg, rgba(255,255,255,0.6), rgba(250,250,250,0.5));
+      font-size:.92rem;
+      color:#0b1220;
+    }
+
+    /* small UI */
+    .search-row { display:flex; gap:8px; align-items:center; }
+    .search-row input { flex:1; min-width:0; }
+    .btn-ghost { background:transparent; border:1px solid rgba(2,6,23,0.06); color:#0b1220 }
+    .history { display:flex; gap:8px; flex-wrap:wrap; margin-top:10px }
+
+    /* responsiveness */
+    @media (max-width:1000px){
+      .grid { grid-template-columns: 1fr; }
+      .panel { order: 1; }
+      .visual { order: 2; margin-top:16px; min-height:360px }
+      header.app-head {
+        flex-direction: column;
+        align-items: flex-start;
+        text-align: left;
+        margin-bottom: 20px;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="app container">
+
+    <header class="app-head">
+      <div class="branding">Arif KHan — Weather</div>
+      <div class="text-end d-none d-sm-block">
+        <small class="text-muted"><b>Real Time Weather Report</b></small>
+      </div>
+    </header>
+
+    <div class="grid">
+
+      <!-- LEFT: search + controls -->
+      <section class="panel">
+        <div class="d-flex align-items-center justify-content-between mb-2">
+          <div><strong>Search location</strong><div class="small text-muted">City, town or coordinates</div></div>
+          <div id="loadingIndicator" style="visibility:hidden"><span class="spinner-border spinner-border-sm text-warning" aria-hidden="true"></span></div>
+        </div>
+
+        <div class="search-row mb-2">
+          <input id="q" class="form-control form-control-lg" placeholder="e.g. London or 51.52,-0.11" aria-label="Search location" />
+          <button id="searchBtn" class="btn btn-primary btn-lg">Search</button>
+        </div>
+
+        <div class="d-flex gap-2 mb-2">
+          <button id="locBtn" class="btn btn-ghost">Use my location</button>
+          <button id="toggleUnits" class="btn btn-ghost">°C / °F</button>
+          <button id="clearHistory" class="btn btn-ghost ms-auto" title="Clear saved searches">Clear</button>
+        </div>
+
+        <div class="history" id="history"></div>
+      </section>
+
+      <!-- RIGHT: visual + details -->
+      <aside class="visual sunny" id="visualCard" aria-live="polite">
+        <div class="hero">
+          <div class="info">
+            <div class="place" id="placeLabel">—</div>
+            <div class="time" id="localTime">—</div>
+
+            <div style="margin-top:8px">
+              <div class="temp" id="tempLabel">--°C <small id="unitLabel" style="font-size:20px;opacity:.8">C</small></div>
+              <div class="condition" id="condLabel">—</div>
+            </div>
+          </div>
+
+          <div class="icon">
+            <img id="condIcon" src="" alt="weather icon" />
+          </div>
+        </div>
+
+        <div class="metrics">
+          <div class="metric"><i class="fa-solid fa-wind"></i>&nbsp;<span class="k" id="windK">-</span> km/h</div>
+          <div class="metric"><i class="fa-solid fa-droplet"></i>&nbsp;<span class="k" id="humK">-</span>%</div>
+          <div class="metric"><i class="fa-solid fa-cloud"></i>&nbsp;<span class="k" id="cloudK">-</span>%</div>
+          <div class="metric"><i class="fa-solid fa-eye"></i>&nbsp;<span class="k" id="visK">-</span> km</div>
+          <div class="metric"><i class="fa-solid fa-thermometer"></i>&nbsp;<span class="k" id="feelsK">-</span>°</div>
+        </div>
+
+        <div class="aqi" id="aqiBox" style="display:none">
+          <div><strong>Air Quality</strong> &nbsp; <small id="aqiIndex">—</small></div>
+          <div class="small" id="aqiDetails" style="margin-top:6px; color:#334155"></div>
+        </div>
+      </aside>
+
+    </div>
+  </div>
+
+  <!-- Script -->
+  <script>
+  (function(){
+    const API_KEY = '2e86260abb2c4e82a29193234250409';
+    const API_BASE = 'https://api.weatherapi.com/v1/current.json';
+    const defaultQuery = 'London';
+
+    const qInput = document.getElementById('q');
+    const searchBtn = document.getElementById('searchBtn');
+    const locBtn = document.getElementById('locBtn');
+    const toggleUnits = document.getElementById('toggleUnits');
+    const clearHistoryBtn = document.getElementById('clearHistory');
+    const historyWrap = document.getElementById('history');
+    const placeLabel = document.getElementById('placeLabel');
+    const localTime = document.getElementById('localTime');
+    const tempLabel = document.getElementById('tempLabel');
+    const unitLabel = document.getElementById('unitLabel');
+    const condLabel = document.getElementById('condLabel');
+    const condIcon = document.getElementById('condIcon');
+    const windK = document.getElementById('windK');
+    const humK = document.getElementById('humK');
+    const cloudK = document.getElementById('cloudK');
+    const visK = document.getElementById('visK');
+    const feelsK = document.getElementById('feelsK');
+    const aqiBox = document.getElementById('aqiBox');
+    const aqiIndex = document.getElementById('aqiIndex');
+    const aqiDetails = document.getElementById('aqiDetails');
+
+    let unit = localStorage.getItem('weather_unit') || 'C';
+    let history = JSON.parse(localStorage.getItem('weather_history')||'[]');
+
+    function formatTemp(c, f){ return unit === 'C' ? Math.round(c) + '°' : Math.round(f) + '°'; }
+    function setUnits(u){ unit = u; localStorage.setItem('weather_unit', u); unitLabel.textContent = u; }
+
+    function addHistory(q){
+      if(!q) return;
+      history = history.filter(x => x !== q);
+      history.unshift(q);
+      history = history.slice(0,6);
+      localStorage.setItem('weather_history', JSON.stringify(history));
+      renderHistory();
+    }
+    function renderHistory(){
+      historyWrap.innerHTML = '';
+      history.forEach(h => {
+        const btn = document.createElement('button');
+        btn.className = 'btn btn-sm btn-outline-secondary';
+        btn.textContent = h;
+        btn.addEventListener('click', ()=> fetchWeather(h));
+        historyWrap.appendChild(btn);
+      });
+    }
+    function clearHistory(){ history = []; localStorage.setItem('weather_history','[]'); renderHistory(); }
+
+    function render(resp){
+      if(!resp) return;
+      const loc = resp.location;
+      const cur = resp.current;
+      placeLabel.textContent = `${loc.name}, ${loc.country}`;
+      localTime.textContent = loc.localtime;
+      condLabel.textContent = cur.condition.text;
+      condIcon.src = 'https:' + cur.condition.icon;
+      condIcon.alt = cur.condition.text;
+      tempLabel.innerHTML = formatTemp(cur.temp_c, cur.temp_f);
+      windK.textContent = cur.wind_kph || '-';
+      humK.textContent = cur.humidity || '-';
+      cloudK.textContent = cur.cloud || '-';
+      visK.textContent = cur.vis_km || '-';
+      feelsK.textContent = unit === 'C' ? Math.round(cur.feelslike_c) : Math.round(cur.feelslike_f);
+      if(cur.air_quality){
+        aqiBox.style.display = 'block';
+        const aq = cur.air_quality;
+        aqiIndex.textContent = 'Index: ' + (aq['us-epa-index'] || aq['gb-defra-index'] || '-');
+        let details = '';
+        ['pm2_5','pm10','o3','no2','so2','co'].forEach(k => { if(aq[k]!==undefined) details += `${k.toUpperCase()}: ${Math.round(aq[k])}  `; });
+        aqiDetails.textContent = details.trim();
+      } else {
+        aqiBox.style.display = 'none';
+      }
+      addHistory(qInput.value || `${loc.lat},${loc.lon}`);
+    }
+
+    async function fetchWeather(query){
+      if(!query) return;
+      try{
+        const url = `${API_BASE}?key=${API_KEY}&q=${encodeURIComponent(query)}&aqi=yes`;
+        const res = await fetch(url);
+        const data = await res.json();
+        if(data && data.location && data.current){ render(data); }
+      }catch(err){ console.error(err); alert('Error fetching weather'); }
+    }
+
+    searchBtn.addEventListener('click', ()=> fetchWeather(qInput.value.trim() || defaultQuery));
+    qInput.addEventListener('keydown', e=>{ if(e.key==='Enter') searchBtn.click(); });
+    locBtn.addEventListener('click', ()=>{
+      if(!navigator.geolocation) return alert('Not supported');
+      navigator.geolocation.getCurrentPosition(pos=>{
+        const q = `${pos.coords.latitude.toFixed(4)},${pos.coords.longitude.toFixed(4)}`;
+        qInput.value=q; fetchWeather(q);
+      });
+    });
+    toggleUnits.addEventListener('click', ()=>{ setUnits(unit==='C'?'F':'C'); fetchWeather(qInput.value||history[0]||defaultQuery); });
+    clearHistoryBtn.addEventListener('click', clearHistory);
+
+    setUnits(unit);
+    renderHistory();
+    const last = history[0] || defaultQuery;
+    qInput.value = last;
+    fetchWeather(last);
+  })();
+  </script>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
